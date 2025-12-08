@@ -42,6 +42,7 @@ async function compressEncodedImage(imageData, rawInfo, options = {}) {
 
   let outputBuffer;
   let outputFormat;
+  let formatChanged = false;
 
   // Determine output format and compression strategy based on algorithm
   if (algorithm === 'dct' || algorithm === 'dwt') {
@@ -69,6 +70,10 @@ async function compressEncodedImage(imageData, rawInfo, options = {}) {
     }
   } else {
     // LSB and PVD require lossless compression - always use PNG
+    // Note: Converting from JPEG to PNG will increase file size significantly
+    if (originalFormat === 'jpeg' || originalFormat === 'jpg') {
+      formatChanged = true;
+    }
     outputBuffer = await sharpInstance
       .png({
         compressionLevel: 9, // Maximum compression
@@ -94,7 +99,12 @@ async function compressEncodedImage(imageData, rawInfo, options = {}) {
       outputSize,
       sizeIncrease,
       sizeIncreasePercent: parseFloat(sizeIncreasePercent),
-      compressionApplied: true
+      compressionApplied: true,
+      formatChanged,
+      originalFormat,
+      note: formatChanged 
+        ? `Image format changed from ${originalFormat} to ${outputFormat} (required for ${algorithm.toUpperCase()} algorithm). This may result in larger file size.`
+        : `Optimized compression applied while maintaining ${outputFormat.toUpperCase()} format.`
     }
   };
 }
