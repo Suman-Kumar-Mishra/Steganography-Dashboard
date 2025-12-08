@@ -226,11 +226,15 @@ async function encodeDCT(inputImageBuffer, payloadBuffer, options = {}) {
   }
 
   // Output with optimized compression
+  // Use targetFormat if pre-conversion was applied, otherwise use original format
+  const formatToUse = options.targetFormat || originalMetrics.format;
+  const quality = options.quality || 90;
   const { buffer: outBuffer, format: outputFormat, metrics: compressionMetrics } = await compressEncodedImage(
     modifiedData,
     { width, height, channels },
     {
-      originalFormat: originalMetrics.format,
+      originalFormat: formatToUse,
+      quality,
       algorithm: 'dct',
       originalSize: originalMetrics.size
     }

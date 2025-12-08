@@ -110,7 +110,7 @@ async function preConvertImage(imageBuffer, targetFormat = 'webp', options = {})
  * @returns {Promise<Object>} - Object containing compressed buffer and metrics
  */
 async function compressEncodedImage(imageData, rawInfo, options = {}) {
-  const { originalFormat = 'png', algorithm = 'lsb', originalSize = 0 } = options;
+  const { originalFormat = 'png', algorithm = 'lsb', originalSize = 0, quality = 85 } = options;
   const { width, height, channels } = rawInfo;
 
   const sharpInstance = sharp(imageData, {
@@ -129,7 +129,7 @@ async function compressEncodedImage(imageData, rawInfo, options = {}) {
       try {
         outputBuffer = await sharpInstance
           .avif({
-            quality: 85,
+            quality: quality || 85,
             effort: 4,
             chromaSubsampling: '4:4:4'
           })
@@ -139,7 +139,7 @@ async function compressEncodedImage(imageData, rawInfo, options = {}) {
         console.warn('AVIF output not supported, using WebP:', error.message);
         outputBuffer = await sharpInstance
           .webp({
-            quality: 90,
+            quality: quality || 90,
             effort: 4,
             lossless: false
           })
@@ -151,7 +151,7 @@ async function compressEncodedImage(imageData, rawInfo, options = {}) {
       // Preserve WebP format with high quality
       outputBuffer = await sharpInstance
         .webp({
-          quality: 90,
+          quality: quality || 90,
           effort: 4,
           lossless: false
         })
@@ -161,7 +161,7 @@ async function compressEncodedImage(imageData, rawInfo, options = {}) {
       // Use JPEG with high quality to preserve embedded data
       outputBuffer = await sharpInstance
         .jpeg({
-          quality: 95,
+          quality: quality || 95,
           chromaSubsampling: '4:4:4',
           mozjpeg: true
         })
@@ -179,19 +179,40 @@ async function compressEncodedImage(imageData, rawInfo, options = {}) {
       outputFormat = 'png';
     }
   } else {
-    // LSB and PVD require lossless compression - always use PNG
-    // Note: Converting from JPEG/AVIF/WebP to PNG will increase file size
-    if (originalFormat !== 'png') {
-      formatChanged = true;
+    // LSB and PVD need high fidelity; default to lossless PNG unless user asked for AVIF/WebP.
+    // When AVIF/WebP requested, use near-lossless (quality-controlled) to reduce size, accepting slight risk.
+    if (originalFormat === 'webp') {
+      outputBuffer = await sharpInstance
+        .webp({
+          quality: quality || 90,
+          effort: 4,
+          lossless: false,
+          nearLossless: true
+        })
+        .toBuffer();
+      outputFormat = 'webp';
+    } else if (originalFormat === 'avif') {
+      outputBuffer = await sharpInstance
+        .avif({
+          quality: quality || 85,
+          effort: 4,
+          chromaSubsampling: '4:4:4'
+        })
+        .toBuffer();
+      outputFormat = 'avif';
+    } else {
+      if (originalFormat !== 'png') {
+        formatChanged = true;
+      }
+      outputBuffer = await sharpInstance
+        .png({
+          compressionLevel: 9,
+          adaptiveFiltering: true,
+          palette: false
+        })
+        .toBuffer();
+      outputFormat = 'png';
     }
-    outputBuffer = await sharpInstance
-      .png({
-        compressionLevel: 9,
-        adaptiveFiltering: true,
-        palette: false
-      })
-      .toBuffer();
-    outputFormat = 'png';
   }
 
   // Calculate size metrics

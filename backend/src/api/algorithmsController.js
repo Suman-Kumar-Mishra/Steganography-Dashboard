@@ -18,6 +18,7 @@ router.post('/dct/encode', upload.single('image'), async (req, res) => {
     const bitsPerChannel = parseInt(req.body.bitsPerChannel || '1', 10);
     const encryptPass = req.body.passphrase || null;
     const outputFormat = req.body.outputFormat || null;
+    const quality = parseInt(req.body.quality || '85', 10);
 
     if (!imageFile) return res.status(400).json({ error: 'image required' });
     
@@ -25,11 +26,16 @@ router.post('/dct/encode', upload.single('image'), async (req, res) => {
     const { buffer: imageBuffer, preConversionMetrics } = await handlePreConversion(
       imageFile.buffer,
       outputFormat,
-      parseInt(req.body.quality || '80', 10)
+      quality
     );
     
     const payloadBuffer = Buffer.from(payloadText, 'utf8');
-    const opts = { bitsPerChannel, channels: [0, 1, 2] };
+    const opts = { 
+      bitsPerChannel, 
+      channels: [0, 1, 2],
+      targetFormat: outputFormat, // Pass pre-conversion target format
+      quality
+    };
     if (encryptPass) opts.encrypt = { passphrase: encryptPass };
 
     const { stegoBuffer, metrics } = await encodeDCT(imageBuffer, payloadBuffer, opts);
@@ -76,6 +82,7 @@ router.post('/dwt/encode', upload.single('image'), async (req, res) => {
     const bitsPerChannel = parseInt(req.body.bitsPerChannel || '1', 10);
     const encryptPass = req.body.passphrase || null;
     const outputFormat = req.body.outputFormat || null;
+    const quality = parseInt(req.body.quality || '85', 10);
 
     if (!imageFile) return res.status(400).json({ error: 'image required' });
     
@@ -83,11 +90,16 @@ router.post('/dwt/encode', upload.single('image'), async (req, res) => {
     const { buffer: imageBuffer, preConversionMetrics } = await handlePreConversion(
       imageFile.buffer,
       outputFormat,
-      parseInt(req.body.quality || '80', 10)
+      quality
     );
     
     const payloadBuffer = Buffer.from(payloadText, 'utf8');
-    const opts = { bitsPerChannel };
+    const opts = { 
+      bitsPerChannel, 
+      channels: [0, 1, 2],
+      targetFormat: outputFormat, // Pass pre-conversion target format
+      quality
+    };
     if (encryptPass) opts.encrypt = { passphrase: encryptPass };
 
     const { stegoBuffer, metrics } = await encodeDWT(imageBuffer, payloadBuffer, opts);
@@ -133,6 +145,7 @@ router.post('/pvd/encode', upload.single('image'), async (req, res) => {
     const payloadText = req.body.payload || '';
     const encryptPass = req.body.passphrase || null;
     const outputFormat = req.body.outputFormat || null;
+    const quality = parseInt(req.body.quality || '85', 10);
 
     if (!imageFile) return res.status(400).json({ error: 'image required' });
     
@@ -140,11 +153,15 @@ router.post('/pvd/encode', upload.single('image'), async (req, res) => {
     const { buffer: imageBuffer, preConversionMetrics } = await handlePreConversion(
       imageFile.buffer,
       outputFormat,
-      parseInt(req.body.quality || '80', 10)
+      quality
     );
     
     const payloadBuffer = Buffer.from(payloadText, 'utf8');
-    const opts = {};
+    const opts = { 
+      threshold: 16,
+      targetFormat: outputFormat, // Pass pre-conversion target format
+      quality
+    };
     if (encryptPass) opts.encrypt = { passphrase: encryptPass };
 
     const { stegoBuffer, metrics } = await encodePVD(imageBuffer, payloadBuffer, opts);

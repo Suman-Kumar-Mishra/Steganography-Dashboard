@@ -85,11 +85,15 @@ async function encodeLSB(inputImageBuffer, payloadBuffer, options = {}) {
 
   // compose PNG output (lossless to preserve embedded bits)
   // Apply optimized compression
+  // Use targetFormat if pre-conversion was applied, otherwise use original format
+  const formatToUse = options.targetFormat || originalMetrics.format;
+  const quality = options.quality || 85;
   const { buffer: outBuffer, format: outputFormat, metrics: compressionMetrics } = await compressEncodedImage(
     data,
     { width, height, channels: ch },
     {
-      originalFormat: originalMetrics.format,
+      originalFormat: formatToUse,
+      quality,
       algorithm: 'lsb',
       originalSize: originalMetrics.size
     }

@@ -190,11 +190,15 @@ async function encodePVD(inputImageBuffer, payloadBuffer, options = {}) {
   }
 
   // Output with optimized compression
+  // Use targetFormat if pre-conversion was applied, otherwise use original format
+  const formatToUse = options.targetFormat || originalMetrics.format;
+  const quality = options.quality || 85;
   const { buffer: outBuffer, format: outputFormat, metrics: compressionMetrics } = await compressEncodedImage(
     modifiedData,
     { width, height, channels },
     {
-      originalFormat: originalMetrics.format,
+      originalFormat: formatToUse,
+      quality,
       algorithm: 'pvd',
       originalSize: originalMetrics.size
     }
