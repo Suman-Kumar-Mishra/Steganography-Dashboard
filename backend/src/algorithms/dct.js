@@ -1,6 +1,7 @@
 import sharp from 'sharp';
 import crypto from 'crypto';
 import { buildHeader, parseHeader, encryptWithPassphrase, decryptWithPassphrase } from '../utils/cryptoHeader.js';
+import { detectImageFormat, compressEncodedImage, createMetricsResponse } from '../utils/imageCompression.js';
 
 /**
  * DCT (Discrete Cosine Transform) Steganography
@@ -125,6 +126,9 @@ async function encodeDCT(inputImageBuffer, payloadBuffer, options = {}) {
   const bitsPerChannel = options.bitsPerChannel || 1;
   const encryptOpt = options.encrypt || null;
 
+  // Detect original image format and size
+  const originalMetrics = await detectImageFormat(inputImageBuffer);
+
   // Optional encryption
   let plaintext = Buffer.from(payloadBuffer);
   let headerObj;
@@ -221,10 +225,16 @@ async function encodeDCT(inputImageBuffer, payloadBuffer, options = {}) {
     }
   }
 
-  // Output as PNG
-  const outBuffer = await sharp(modifiedData, {
-    raw: { width, height, channels }
-  }).png().toBuffer();
+  // Output with optimized compression
+  const { buffer: outBuffer, format: outputFormat, metrics: compressionMetrics } = await compressEncodedImage(
+    modifiedData,
+    { width, height, channels },
+    {
+      originalFormat: originalMetrics.format,
+      algorithm: 'dct',
+      originalSize: originalMetrics.size
+    }
+  );
 
   const metrics = {
     width,
@@ -232,7 +242,9 @@ async function encodeDCT(inputImageBuffer, payloadBuffer, options = {}) {
     capacityBits,
     usedBits: payloadBits.length,
     bitsPerChannel,
-    algorithm: 'DCT'
+    algorithm: 'DCT',
+    outputFormat,
+    ...compressionMetrics
   };
 
   return { stegoBuffer: outBuffer, metrics };
